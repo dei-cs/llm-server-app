@@ -1,0 +1,35 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434" # bind to localhost so it's not public
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      # simple bearer token for your gateway
+      - APP_API_KEY=${APP_API_KEY}
+      # default model to use if client doesn't specify
+      - DEFAULT_MODEL=gemma2:latest
+      # always force using DEFAULT_MODEL (ignore client model)
+      - ENFORCE_DEFAULT_MODEL=true
+      # allow your frontend origin (comma-separated for many)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      # talk to ollama over the internal docker network
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      - ollama
+    ports:
+      - "3001:3001"
+
+  # comment this block out if you don't want HTTPS yet
+
+
+volumes:
+  ollama:
