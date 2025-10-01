@@ -1,9 +1,11 @@
 #!/bin/bash
 
-set -e  # Exit on error
+##########################################################################
+# ** Remove the following line if you have PATH issues on macOS **
+# export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+##########################################################################
 
-# Ensure Docker is in PATH (macOS Docker Desktop)
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+set -e  # Exit on error
 
 echo "🚀 Starting LLM Server Application..."
 
@@ -11,12 +13,20 @@ echo "🚀 Starting LLM Server Application..."
 if [ -f .env ]; then
     # Source the .env file properly, removing comments and empty lines
     while IFS= read -r line || [ -n "$line" ]; do
+        # Remove Windows line endings (CRLF -> LF)
+        line=$(echo "$line" | tr -d '\r')
         # Skip empty lines and comments
         if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
             continue
         fi
         # Remove inline comments
         line=$(echo "$line" | sed 's/#.*$//')
+        # Trim whitespace
+        line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        # Skip if line is empty after processing
+        if [[ -z "$line" ]]; then
+            continue
+        fi
         # Export the variable
         export "$line"
     done < .env
@@ -38,9 +48,29 @@ else
     # Check if app.py or Dockerfile has been modified more recently than the image
     IMAGE_CREATED=$(docker inspect -f '{{.Created}}' llm-server-app-api 2> /dev/null | head -1)
     if [ -n "$IMAGE_CREATED" ]; then
-        IMAGE_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo $IMAGE_CREATED | cut -d'.' -f1)" "+%s" 2> /dev/null || echo "0")
-        APP_PY_TIMESTAMP=$(stat -f "%m" api/app.py 2> /dev/null || echo "0")
-        DOCKERFILE_TIMESTAMP=$(stat -f "%m" api/Dockerfile 2> /dev/null || echo "0")
+        # Convert Docker timestamp to Unix timestamp (cross-platform)
+        IMAGE_DATE=$(echo "$IMAGE_CREATED" | cut -d'.' -f1 | sed 's/T/ /')
+        if command -v gdate > /dev/null 2>&1; then
+            # Use GNU date if available (macOS with coreutils)
+            IMAGE_TIMESTAMP=$(gdate -d "$IMAGE_DATE" "+%s" 2> /dev/null || echo "0")
+        elif date --version > /dev/null 2>&1; then
+            # GNU date (Linux/Windows Git Bash)
+            IMAGE_TIMESTAMP=$(date -d "$IMAGE_DATE" "+%s" 2> /dev/null || echo "0")
+        else
+            # BSD date (macOS)
+            IMAGE_TIMESTAMP=$(date -j -f "%Y-%m-%d %H:%M:%S" "$IMAGE_DATE" "+%s" 2> /dev/null || echo "0")
+        fi
+        
+        # Get file modification timestamps (cross-platform)
+        if stat --version > /dev/null 2>&1; then
+            # GNU stat (Linux/Windows Git Bash)
+            APP_PY_TIMESTAMP=$(stat -c "%Y" api/app.py 2> /dev/null || echo "0")
+            DOCKERFILE_TIMESTAMP=$(stat -c "%Y" api/Dockerfile 2> /dev/null || echo "0")
+        else
+            # BSD stat (macOS)
+            APP_PY_TIMESTAMP=$(stat -f "%m" api/app.py 2> /dev/null || echo "0")
+            DOCKERFILE_TIMESTAMP=$(stat -f "%m" api/Dockerfile 2> /dev/null || echo "0")
+        fi
         
         if [ "$APP_PY_TIMESTAMP" -gt "$IMAGE_TIMESTAMP" ] || [ "$DOCKERFILE_TIMESTAMP" -gt "$IMAGE_TIMESTAMP" ]; then
             echo "🔄 API code changes detected, rebuilding..."
