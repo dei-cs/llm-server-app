@@ -10,7 +10,7 @@ DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemma2:latest")
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 # When true, ignore client-provided model and always use DEFAULT_MODEL
-ENFORCE_DEFAULT_MODEL = os.getenv("ENFORCE_DEFAULT_MODEL", "false").strip().lower() in {"1","true","yes","on"}
+ENFORCE_DEFAULT_MODEL = os.getenv("ENFORCE_DEFAULT_MODEL", "false").lower() == "true"
 
 app = FastAPI(title="LLM Gateway")
 

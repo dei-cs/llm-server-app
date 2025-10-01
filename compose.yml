@@ -16,7 +16,7 @@ services:
       # simple bearer token for your gateway
       - APP_API_KEY=${APP_API_KEY}
       # default model to use if client doesn't specify
-      - DEFAULT_MODEL=gemma2:latest
+      - DEFAULT_MODEL=${DEFAULT_MODEL}
       # always force using DEFAULT_MODEL (ignore client model)
       - ENFORCE_DEFAULT_MODEL=true
       # allow your frontend origin (comma-separated for many)
