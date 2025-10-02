@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
 APP_API_KEY = os.getenv("APP_API_KEY")
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemma2:latest")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL")
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 # When true, ignore client-provided model and always use DEFAULT_MODEL
