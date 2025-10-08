@@ -10,7 +10,7 @@ services:
       - "127.0.0.1:11434:11434" # bind to localhost so it's not public
 
   api:
-    build: ./api
+    build: .
     restart: unless-stopped
     environment:
       # simple bearer token for your gateway

@@ -1,5 +1,5 @@
-import os, json, asyncio
-from typing import List, Optional, Literal
+import os, json
+from typing import List, Literal
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,10 +39,6 @@ class ChatMessage(dict):
 
 @app.post("/v1/chat")
 async def chat(request: Request):
-    """
-    Body: { model?: string, messages: ChatMessage[], stream?: boolean }
-    Streams newline-delimited JSON chunks (Ollama style) when stream=true.
-    """
     check_auth(request)
     body = await request.json()
     model = DEFAULT_MODEL if ENFORCE_DEFAULT_MODEL else body.get("model", DEFAULT_MODEL)
