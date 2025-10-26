@@ -17,7 +17,7 @@ docker compose down -v
 ## OLLAMA
 
 ### Pull model
-docker compose exec ollama ollama pull gemma3:1b
+docker compose exec ollama ollama pull llama3.2:3b
 
 ### See whats installed/pulled ATM
 docker compose exec ollama ollama list
@@ -27,7 +27,7 @@ docker compose exec ollama ollama list
 ## SMOKE TESTS
 
 ### Chat inside the container
-docker compose exec ollama ollama run gemma2:latest
+docker compose exec ollama ollama run llama3.2:3b
 
 ### Health
 curl http://localhost:3001/healthz
