@@ -17,7 +17,8 @@ docker compose down -v
 ## OLLAMA
 
 ### Pull model
-docker compose exec ollama ollama pull llama3.2:3b
+docker compose exec ollama ollama pull llama3.2:1b
+docker compose exec ollama ollama pull all-minilm:22m
 
 ### See whats installed/pulled ATM
 docker compose exec ollama ollama list
@@ -27,7 +28,7 @@ docker compose exec ollama ollama list
 ## SMOKE TESTS
 
 ### Chat inside the container
-docker compose exec ollama ollama run llama3.2:3b
+docker compose exec ollama ollama run llama3.2:1b
 
 ### Health
 curl http://localhost:3001/healthz
@@ -44,3 +45,8 @@ curl -N -X POST http://localhost:3001/v1/chat \
       {"role":"user","content":"Say hi in 5 words."}
     ]
   }'
+
+
+
+  ## EMBEDDING
+  curl -X POST "http://localhost:11434/api/embed" -H "Content-Type: application/json" -d '{"model": "embeddinggemma:300m", "input": ["First sentence", "Second sentence", "Third sentence"]}'

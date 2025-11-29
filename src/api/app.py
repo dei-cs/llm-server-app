@@ -7,6 +7,7 @@ import httpx
 
 APP_API_KEY = os.getenv("APP_API_KEY")
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL")
+DEFAULT_EMBEDDING_MODEL = os.getenv("DEFAULT_EMBEDDING_MODEL")
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 # When true, ignore client-provided model and always use DEFAULT_MODEL
@@ -81,3 +82,4 @@ async def chat(request: Request):
         return JSONResponse(data, status_code=r.status_code)
     finally:
         await client.aclose()
+
