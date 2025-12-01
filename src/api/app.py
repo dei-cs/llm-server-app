@@ -1,9 +1,18 @@
 import os, json
+import logging
 from typing import List, Literal
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - [LLM SERVICE] - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 APP_API_KEY = os.getenv("APP_API_KEY")
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL")
@@ -45,9 +54,19 @@ async def chat(request: Request):
     model = DEFAULT_MODEL if ENFORCE_DEFAULT_MODEL else body.get("model", DEFAULT_MODEL)
     messages: List[ChatMessage] = body.get("messages", [])
     stream = bool(body.get("stream", True))
+    
+    logger.info(f"{'='*60}")
+    logger.info(f"Chat request - Model: {model}, Messages: {len(messages)}, Stream: {stream}")
 
     if not messages:
+        logger.error("No messages provided in request")
         raise HTTPException(400, "messages required")
+    
+    # Log first message preview
+    if messages:
+        first_msg = messages[0]
+        preview = str(first_msg.get('content', ''))[:100]
+        logger.info(f"First message preview: {preview}...")
 
     payload = {
         "model": model,
@@ -59,15 +78,22 @@ async def chat(request: Request):
     client = httpx.AsyncClient(timeout=client_timeout)
 
     async def gen_stream():
+        logger.info(f"Connecting to Ollama at {OLLAMA_URL}/api/chat")
+        chunk_count = 0
         try:
             async with client.stream("POST", f"{OLLAMA_URL}/api/chat", json=payload) as r:
                 r.raise_for_status()
+                logger.info(f"✓ Ollama connection established, streaming response...")
                 async for line in r.aiter_lines():
                     if not line:
                         continue
+                    chunk_count += 1
                     # passthrough Ollama JSON lines as-is
                     yield (line + "\n").encode("utf-8")
+                logger.info(f"✓ Stream complete - sent {chunk_count} chunks")
+                logger.info(f"{'='*60}")
         except httpx.HTTPError as e:
+            logger.error(f"✗ Ollama HTTP error: {e}")
             yield json.dumps({"error": str(e)}).encode("utf-8")
         finally:
             await client.aclose()
@@ -76,10 +102,30 @@ async def chat(request: Request):
         return StreamingResponse(gen_stream(), media_type="application/x-ndjson")
 
     # non-streaming: just relay JSON once
+    logger.info(f"Making non-streaming request to Ollama")
     try:
         r = await client.post(f"{OLLAMA_URL}/api/chat", json=payload)
-        data = r.json()
-        return JSONResponse(data, status_code=r.status_code)
+        ollama_data = r.json()
+        logger.info(f"✓ Received non-streaming response (status: {r.status_code})")
+        
+        # Transform Ollama format to OpenAI format
+        # Ollama: {"message": {"content": "..."}}
+        # OpenAI: {"choices": [{"message": {"content": "..."}}]}
+        openai_format = {
+            "choices": [
+                {
+                    "message": ollama_data.get("message", {}),
+                    "finish_reason": "stop"
+                }
+            ],
+            "model": model
+        }
+        logger.info(f"✓ Transformed to OpenAI format")
+        logger.info(f"{'='*60}")
+        return JSONResponse(openai_format, status_code=r.status_code)
+    except Exception as e:
+        logger.error(f"✗ Error in non-streaming request: {e}")
+        raise
     finally:
         await client.aclose()
 
